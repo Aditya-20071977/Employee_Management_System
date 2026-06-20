@@ -210,30 +210,3 @@ All endpoints are prefixed with `/api`.
     "message": "Employee deleted successfully"
   }
   ```
-
----
-
-## Deployment Details
-
-### 1. Database Setup (MongoDB Atlas)
-1. Register/Login on [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
-2. Create a shared cluster and select your cloud provider/region.
-3. Under **Database Access**, create a user with read/write privileges.
-4. Under **Network Access**, whitelist `0.0.0.0/Log` (or the specific IP address of your server).
-5. Copy the connection string and replace your local `MONGO_URI` in `.env`.
-
-### 2. Backend Deployment (e.g. Render / Heroku)
-1. Link your GitHub repository to your Render/Heroku dashboard.
-2. Select **Web Service** and choose **Node.js** environment.
-3. Configure build and start commands:
-   - Build: `npm install` (inside the backend folder)
-   - Start: `node server.js`
-4. Add your **Environment Variables** in the hosting console (`MONGO_URI`, `JWT_SECRET`, `PORT`).
-
-### 3. Frontend Deployment (e.g. Vercel / Netlify)
-1. Navigate to your frontend project configuration.
-2. Select the repository and choose **Vite** preset.
-3. Set the build command:
-   - Build: `npm run build`
-   - Output Directory: `dist`
-4. Set the backend API URL inside your axios configuration or setup rewrites for CORS matching.
