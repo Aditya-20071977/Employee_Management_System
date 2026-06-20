@@ -21,11 +21,11 @@ router.post('/add', auth, async (req, res) => {
     }
 });
 
-// View Employee List (with search functionality)
+// View Employee List (with search functionality and soft-delete filtering)
 router.get('/', auth, async (req, res) => {
     try {
         const { search } = req.query;
-        let query = {};
+        let query = { isDeleted: { $ne: true } };
         if (search) {
             query.fullName = { $regex: search, $options: 'i' };
         }
@@ -39,8 +39,8 @@ router.get('/', auth, async (req, res) => {
 // Update Employee
 router.put('/:id', auth, async (req, res) => {
     try {
-        const updatedEmp = await Employee.findByIdAndUpdate(
-            req.params.id,
+        const updatedEmp = await Employee.findOneAndUpdate(
+            { _id: req.params.id, isDeleted: { $ne: true } },
             req.body,
             { new: true, runValidators: true }
         );
@@ -60,10 +60,14 @@ router.put('/:id', auth, async (req, res) => {
     }
 });
 
-// Delete Employee
+// Delete Employee (Soft Delete)
 router.delete('/:id', auth, async (req, res) => {
     try {
-        const deletedEmp = await Employee.findByIdAndDelete(req.params.id);
+        const deletedEmp = await Employee.findOneAndUpdate(
+            { _id: req.params.id, isDeleted: { $ne: true } },
+            { isDeleted: true },
+            { new: true }
+        );
         if (!deletedEmp) {
             return res.status(404).json({ message: "Employee not found" });
         }

@@ -77,10 +77,12 @@ const Register = () => {
                         boxShadow: '0 8px 24px var(--primary-glow)'
                     }}>
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="9" cy="7" r="4"></circle>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            <path d="M3 21h18"></path>
+                            <path d="M9 8h1"></path>
+                            <path d="M9 12h1"></path>
+                            <path d="M14 8h1"></path>
+                            <path d="M14 12h1"></path>
+                            <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"></path>
                         </svg>
                     </div>
                     <h2 style={{ fontSize: '1.75rem', marginBottom: '8px' }}>Create Account</h2>

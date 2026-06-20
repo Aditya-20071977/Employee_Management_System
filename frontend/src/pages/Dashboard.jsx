@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axiosConfig';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Dashboard = () => {
     const [employees, setEmployees] = useState([]);
@@ -27,6 +27,7 @@ const Dashboard = () => {
     const [submitting, setSubmitting] = useState(false);
 
     const navigate = useNavigate();
+    const location = useLocation();
     const currentUser = localStorage.getItem('username') || 'Administrator';
 
     const fetchEmployees = async (searchVal = '') => {
@@ -44,8 +45,13 @@ const Dashboard = () => {
     };
 
     useEffect(() => {
+        if (location.state?.successMessage) {
+            setSuccess(location.state.successMessage);
+            window.history.replaceState({}, document.title);
+            setTimeout(() => setSuccess(''), 4000);
+        }
         fetchEmployees();
-    }, []);
+    }, [location]);
 
     // Handle search input change (debounced search could be nice, but simple input works well)
     const handleSearchChange = (e) => {
@@ -57,7 +63,7 @@ const Dashboard = () => {
     const handleLogout = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('username');
-        navigate('/login');
+        navigate('/login', { state: { successMessage: 'You have been logged out successfully.' } });
     };
 
     // Open modal to add new employee
@@ -173,16 +179,17 @@ const Dashboard = () => {
     }, {});
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', width: '100vw' }}>
+        <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
             {/* SIDEBAR */}
-            <aside style={{
+            <aside className="no-scrollbar" style={{
                 width: '280px',
                 backgroundColor: 'var(--bg-sidebar)',
                 borderRight: '1px solid var(--border-color)',
                 display: 'flex',
                 flexDirection: 'column',
                 padding: '30px 24px',
-                flexShrink: 0
+                flexShrink: 0,
+                overflowY: 'auto'
             }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '40px' }}>
                     <div style={{
@@ -193,11 +200,18 @@ const Dashboard = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        color: 'white',
-                        fontWeight: '800',
-                        fontSize: '1.2rem'
+                        boxShadow: '0 4px 12px var(--primary-glow)'
                     }}>
-                        E
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 21h18" />
+                            <path d="M5 21V8a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v13" />
+                            <path d="M13 21V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v17" />
+                            <path d="M8 10h2" />
+                            <path d="M8 14h2" />
+                            <path d="M16 6h2" />
+                            <path d="M16 10h2" />
+                            <path d="M16 14h2" />
+                        </svg>
                     </div>
                     <div>
                         <h1 style={{ fontSize: '1.25rem', margin: 0, letterSpacing: '-0.02em' }}>EMS Pro</h1>
@@ -240,12 +254,12 @@ const Dashboard = () => {
                         Departments
                     </h3>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '200px', overflowY: 'auto', paddingRight: '4px' }}>
+                    <div className="no-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '180px', overflowY: 'auto' }}>
                         {Object.keys(departmentCounts).length === 0 ? (
                             <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No departments found</span>
                         ) : (
                             Object.entries(departmentCounts).map(([dept, count]) => (
-                                <div key={dept} style={{
+                                <div key={dept} className="dept-item" style={{
                                     display: 'flex',
                                     justifyContent: 'space-between',
                                     alignItems: 'center',
@@ -253,7 +267,8 @@ const Dashboard = () => {
                                     padding: '8px 12px',
                                     backgroundColor: 'var(--bg-app)',
                                     borderRadius: 'var(--radius-sm)',
-                                    border: '1px solid var(--border-color)'
+                                    border: '1px solid var(--border-color)',
+                                    cursor: 'default'
                                 }}>
                                     <span style={{ fontWeight: '500', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '150px' }}>{dept}</span>
                                     <span style={{
@@ -272,40 +287,77 @@ const Dashboard = () => {
 
                 {/* Sidebar footer user / logout */}
                 <div style={{
-                    borderTop: '1px solid var(--border-color)',
-                    paddingTop: '20px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '12px'
+                    paddingTop: '24px',
+                    marginTop: 'auto'
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{
-                            width: '36px',
-                            height: '36px',
-                            borderRadius: '50%',
-                            backgroundColor: 'var(--primary-glow)',
-                            color: 'var(--primary)',
-                            display: 'flex',
+                    <div style={{
+                        backgroundColor: 'var(--bg-card-profile, rgba(255, 255, 255, 0.02))',
+                        borderRadius: 'var(--radius-lg)',
+                        padding: '16px',
+                        border: '1px solid var(--border-color)',
+                        boxShadow: 'var(--shadow-sm)',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '14px'
+                    }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                                width: '42px',
+                                height: '42px',
+                                borderRadius: '12px',
+                                background: 'linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)',
+                                color: 'white',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontWeight: '700',
+                                fontSize: '1rem',
+                                flexShrink: 0,
+                                boxShadow: '0 4px 10px var(--primary-glow)'
+                            }}>
+                                {currentUser.substring(0, 2).toUpperCase()}
+                            </div>
+                            <div style={{ overflow: 'hidden', flexGrow: 1 }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: '700', color: 'var(--text-primary)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{currentUser}</div>
+                                <span style={{
+                                    display: 'inline-block',
+                                    fontSize: '0.7rem',
+                                    color: 'var(--primary)',
+                                    fontWeight: '700',
+                                    backgroundColor: 'var(--primary-glow)',
+                                    padding: '1px 6px',
+                                    borderRadius: '4px',
+                                    marginTop: '2px'
+                                }}>
+                                    Administrator
+                                </span>
+                            </div>
+                        </div>
+                        <button onClick={handleLogout} className="btn-logout" style={{
+                            width: '100%',
+                            padding: '10px 14px',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border-color)',
+                            backgroundColor: 'var(--bg-app)',
+                            color: 'var(--text-primary)',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem',
+                            fontWeight: '600',
+                            display: 'inline-flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            fontWeight: '600',
-                            fontSize: '0.9rem'
+                            gap: '8px',
+                            transition: 'all 0.2s ease',
+                            boxShadow: 'var(--shadow-sm)'
                         }}>
-                            {currentUser.substring(0, 2).toUpperCase()}
-                        </div>
-                        <div style={{ overflow: 'hidden' }}>
-                            <div style={{ fontSize: '0.85rem', fontWeight: '600', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{currentUser}</div>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Admin Role</span>
-                        </div>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                <polyline points="16 17 21 12 16 7"></polyline>
+                                <line x1="21" y1="12" x2="9" y2="12"></line>
+                            </svg>
+                            Sign Out
+                        </button>
                     </div>
-                    <button onClick={handleLogout} className="btn btn-secondary" style={{ width: '100%', padding: '10px' }}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-                            <polyline points="16 17 21 12 16 7"></polyline>
-                            <line x1="21" y1="12" x2="9" y2="12"></line>
-                        </svg>
-                        Logout
-                    </button>
                 </div>
             </aside>
 
@@ -315,7 +367,8 @@ const Dashboard = () => {
                 padding: '40px',
                 display: 'flex',
                 flexDirection: 'column',
-                overflowY: 'auto',
+                height: '100vh',
+                overflow: 'hidden',
                 backgroundColor: 'var(--bg-app)'
             }}>
                 {/* Header Actions */}
@@ -423,10 +476,11 @@ const Dashboard = () => {
                         </p>
                     </div>
                 ) : (
-                    <div className="table-container animate-fade-in">
+                    <div className="table-container no-scrollbar animate-fade-in">
                         <table className="emp-table">
                             <thead>
                                 <tr>
+                                    <th style={{ width: '60px' }}>S.No</th>
                                     <th>Full Name</th>
                                     <th>Email Address</th>
                                     <th>Mobile Phone</th>
@@ -437,8 +491,9 @@ const Dashboard = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {employees.map((emp) => (
+                                {employees.map((emp, index) => (
                                     <tr key={emp._id}>
+                                        <td style={{ fontWeight: '600', color: 'var(--text-muted)', width: '60px' }}>{index + 1}</td>
                                         <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{emp.fullName}</td>
                                         <td>{emp.email}</td>
                                         <td>{emp.mobile}</td>
@@ -522,21 +577,21 @@ const Dashboard = () => {
                                     </div>
                                 )}
 
-                                <div className="form-group">
-                                    <label className="form-label">Full Name</label>
-                                    <input
-                                        type="text"
-                                        className="form-control"
-                                        placeholder="e.g. John Doe"
-                                        value={formValues.fullName}
-                                        onChange={(e) => setFormValues({ ...formValues, fullName: e.target.value })}
-                                        disabled={submitting}
-                                    />
-                                    {formErrors.fullName && <div className="form-error">{formErrors.fullName}</div>}
-                                </div>
+                                <div className="modal-grid">
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label">Full Name</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            placeholder="e.g. John Doe"
+                                            value={formValues.fullName}
+                                            onChange={(e) => setFormValues({ ...formValues, fullName: e.target.value })}
+                                            disabled={submitting}
+                                        />
+                                        {formErrors.fullName && <div className="form-error">{formErrors.fullName}</div>}
+                                    </div>
 
-                                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                                    <div className="form-group" style={{ flex: '1 1 200px' }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
                                         <label className="form-label">Email Address</label>
                                         <input
                                             type="email"
@@ -549,7 +604,7 @@ const Dashboard = () => {
                                         {formErrors.email && <div className="form-error">{formErrors.email}</div>}
                                     </div>
 
-                                    <div className="form-group" style={{ flex: '1 1 200px' }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
                                         <label className="form-label">Mobile Number</label>
                                         <input
                                             type="text"
@@ -561,46 +616,56 @@ const Dashboard = () => {
                                         />
                                         {formErrors.mobile && <div className="form-error">{formErrors.mobile}</div>}
                                     </div>
-                                </div>
 
-                                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                                    <div className="form-group" style={{ flex: '1 1 200px' }}>
-                                        <label className="form-label">Department</label>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label">Joining Date</label>
                                         <input
-                                            type="text"
+                                            type="date"
                                             className="form-control"
-                                            placeholder="e.g. Engineering, Sales"
+                                            value={formValues.joiningDate}
+                                            onChange={(e) => setFormValues({ ...formValues, joiningDate: e.target.value })}
+                                            disabled={submitting}
+                                        />
+                                        {formErrors.joiningDate && <div className="form-error">{formErrors.joiningDate}</div>}
+                                    </div>
+
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
+                                        <label className="form-label">Department</label>
+                                        <select
+                                            className="form-control"
                                             value={formValues.department}
                                             onChange={(e) => setFormValues({ ...formValues, department: e.target.value })}
                                             disabled={submitting}
-                                        />
+                                        >
+                                            <option value="">Select Department</option>
+                                            <option value="IT">IT</option>
+                                            <option value="HR">HR</option>
+                                            <option value="Finance">Finance</option>
+                                            <option value="Marketing">Marketing</option>
+                                            <option value="Sales">Sales</option>
+                                            <option value="Operations">Operations</option>
+                                        </select>
                                         {formErrors.department && <div className="form-error">{formErrors.department}</div>}
                                     </div>
 
-                                    <div className="form-group" style={{ flex: '1 1 200px' }}>
+                                    <div className="form-group" style={{ marginBottom: 0 }}>
                                         <label className="form-label">Designation</label>
-                                        <input
-                                            type="text"
+                                        <select
                                             className="form-control"
-                                            placeholder="e.g. Frontend Lead"
                                             value={formValues.designation}
                                             onChange={(e) => setFormValues({ ...formValues, designation: e.target.value })}
                                             disabled={submitting}
-                                        />
+                                        >
+                                            <option value="">Select Designation</option>
+                                            <option value="Intern">Intern</option>
+                                            <option value="Developer">Developer</option>
+                                            <option value="Manager">Manager</option>
+                                            <option value="Team Lead">Team Lead</option>
+                                            <option value="HR Executive">HR Executive</option>
+                                            <option value="Admin">Admin</option>
+                                        </select>
                                         {formErrors.designation && <div className="form-error">{formErrors.designation}</div>}
                                     </div>
-                                </div>
-
-                                <div className="form-group" style={{ marginBottom: 0 }}>
-                                    <label className="form-label">Joining Date</label>
-                                    <input
-                                        type="date"
-                                        className="form-control"
-                                        value={formValues.joiningDate}
-                                        onChange={(e) => setFormValues({ ...formValues, joiningDate: e.target.value })}
-                                        disabled={submitting}
-                                    />
-                                    {formErrors.joiningDate && <div className="form-error">{formErrors.joiningDate}</div>}
                                 </div>
                             </div>
 

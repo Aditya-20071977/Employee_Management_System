@@ -1,21 +1,31 @@
 import { useState, useEffect } from 'react';
 import api from '../api/axiosConfig';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 
 const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
 
     useEffect(() => {
+        // Check for success messages from routing state (e.g. logout success)
+        if (location.state?.successMessage) {
+            setSuccess(location.state.successMessage);
+            // clear state history so refresh doesn't show it again
+            window.history.replaceState({}, document.title);
+            setTimeout(() => setSuccess(''), 4000);
+        }
+
         // If already logged in, redirect to dashboard
         if (localStorage.getItem('token')) {
             navigate('/dashboard');
         }
-    }, [navigate]);
+    }, [navigate, location]);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -31,7 +41,7 @@ const Login = () => {
             const res = await api.post('/auth/login', { username, password });
             localStorage.setItem('token', res.data.token);
             localStorage.setItem('username', res.data.user.username);
-            navigate('/dashboard');
+            navigate('/dashboard', { state: { successMessage: 'Login successful! Welcome back.' } });
         } catch (err) {
             setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
         } finally {
@@ -55,15 +65,27 @@ const Login = () => {
                         boxShadow: '0 8px 24px var(--primary-glow)'
                     }}>
                         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                            <circle cx="9" cy="7" r="4"></circle>
-                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            <path d="M3 21h18"></path>
+                            <path d="M9 8h1"></path>
+                            <path d="M9 12h1"></path>
+                            <path d="M14 8h1"></path>
+                            <path d="M14 12h1"></path>
+                            <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"></path>
                         </svg>
                     </div>
                     <h2 style={{ fontSize: '1.75rem', marginBottom: '8px' }}>Welcome Back</h2>
                     <p style={{ fontSize: '0.9rem' }}>Sign in to manage your employee workspace</p>
                 </div>
+
+                {success && (
+                    <div className="alert alert-success">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                            <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                        <span>{success}</span>
+                    </div>
+                )}
 
                 {error && (
                     <div className="alert alert-danger">

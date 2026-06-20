@@ -79,18 +79,20 @@
 body {
   background-color: var(--bg-app);
   color: var(--text-primary);
-  min-height: 100vh;
+  height: 100vh;
+  width: 100vw;
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
+  overflow: hidden;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 #root {
   width: 100%;
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* Typography */
@@ -291,7 +293,8 @@ p {
 /* Tables */
 .table-container {
   width: 100%;
-  overflow-x: auto;
+  overflow: auto;
+  flex-grow: 1;
   border-radius: var(--radius-md);
   border: 1px solid var(--border-color);
   background-color: var(--bg-sidebar);
@@ -354,20 +357,39 @@ p {
   width: 100%;
   max-width: 580px;
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: hidden; /* No scrollbar on modal content container */
   animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  display: flex;
+  flex-direction: column;
 }
 
 .modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px;
+  padding: 16px 24px;
   border-bottom: 1px solid var(--border-color);
 }
 
 .modal-body {
-  padding: 24px;
+  padding: 18px 24px;
+  overflow: hidden; /* No scrollbar on modal body */
+}
+
+.modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px 16px;
+}
+
+.dept-item {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dept-item:hover {
+  border-color: var(--primary) !important;
+  transform: translateX(4px);
+  background-color: var(--bg-card) !important;
 }
 
 .modal-footer {
@@ -375,9 +397,20 @@ p {
   align-items: center;
   justify-content: flex-end;
   gap: 12px;
-  padding: 20px 24px;
+  padding: 16px 24px;
   border-top: 1px solid var(--border-color);
-  background-color: var(--bg-app);
+  background-color: #ffffff !important; /* Force solid white background */
+}
+
+/* Ensure cancel/secondary button inside white modal footer stands out and remains visible in dark mode */
+.modal-footer .btn-secondary {
+  color: #1e293b !important;
+  border-color: #cbd5e1 !important;
+  background-color: transparent !important;
+}
+
+.modal-footer .btn-secondary:hover {
+  background-color: #f1f5f9 !important;
 }
 
 /* Loading Spinners */
@@ -434,4 +467,29 @@ p {
 
 .password-toggle-btn.slashed {
   color: #ffffff !important;
+}
+
+.form-control option {
+  background-color: var(--bg-sidebar);
+  color: var(--text-primary);
+}
+
+/* Hide scrollbar helper */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+/* Sidebar profile card logout button styling */
+.btn-logout {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-logout:hover {
+  background-color: var(--error-bg) !important;
+  color: var(--error) !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
 }

@@ -34,6 +34,10 @@ const empSchema = new mongoose.Schema({
         type: Date,
         required: [true, 'Joining date is required'],
         default: Date.now
+    },
+    isDeleted: {
+        type: Boolean,
+        default: false
     }
 }, {
     timestamps: true
