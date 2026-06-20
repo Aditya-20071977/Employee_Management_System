@@ -1,11 +1,14 @@
 # Corporate Employee Management System (EMS Pro)
 
-A secure, responsive, and visually stunning full-stack Employee Management System built using the MERN stack (MongoDB, Express, React, Node.js). This system allows administrators to manage employee details, search records, view headcounts, and dynamically track organizational stats in a premium, scroll-locked dashboard.
+A secure, responsive, and visually stunning full-stack Employee Management System built using the MERN stack (MongoDB, Express, React, Node.js) and TypeScript. This system allows administrators to manage employee details, search records, view headcounts, and dynamically track organizational stats in a premium, scroll-locked dashboard.
 
 ---
 
 ## Key Features
 
+- **TypeScript Migration**: Frontend fully migrated to TypeScript (`.ts` and `.tsx` file types) to guarantee complete compile-time type-safety.
+- **Client-Side Sorting**: Instantly sort records in the dashboard by clicking headers for `Full Name`, `Department`, `Designation`, and `Joining Date` with live sorting indicators (`▲` / `▼`).
+- **Page-Based Pagination**: Break down list elements into paginated blocks of `5` items per page, featuring a details count label and interactive controls (Previous, Next, and specific page buttons).
 - **JWT Authentication**: Secure user registration and login with token-based session tracking (24h expiry).
 - **Strong Password Rules**: Client and server-side password validation enforcing a minimum of 6 characters, uppercase, lowercase, numbers, and symbols.
 - **Scroll-locked Dashboard View**: Sleek, app-like desktop layout featuring fully fixed sidebars and headers with scrollable content containers that hide visual browser scrollbars (`no-scrollbar`).
@@ -20,8 +23,8 @@ A secure, responsive, and visually stunning full-stack Employee Management Syste
 
 ## Technology Stack
 
-- **Frontend**: React.js (Vite), React Router v6, Axios, Custom CSS (Design Tokens, Glassmorphism, Micro-animations)
-- **Backend**: Node.js, Express.js, JWT, Bcrypt
+- **Frontend**: React.js, Vite, TypeScript, React Router v6, Axios, Custom CSS (Design Tokens, Glassmorphism, Micro-animations)
+- **Backend**: Node.js, Express.js, Jest, Supertest, JWT, Bcrypt
 - **Database**: MongoDB (Mongoose Object Modeling)
 
 ---
@@ -55,7 +58,7 @@ git clone https://github.com/Aditya-20071977/Employee_Management_System.git
 cd Employee_Management_System
 ```
 
-### 3. Backend Setup
+### 3. Backend Setup & Testing
 1. Navigate to the backend directory:
    ```bash
    cd backend
@@ -64,7 +67,10 @@ cd Employee_Management_System
    ```bash
    npm install
    ```
-3. Create a `.env` file and configure it as shown in the [Environment Variables](#environment-variables) section.
+3. Run the backend unit tests (uses Jest and Supertest with database mocking):
+   ```bash
+   npm test
+   ```
 4. Run the backend server:
    ```bash
    # Development hot-reload
@@ -75,7 +81,7 @@ cd Employee_Management_System
    ```
    The backend will start running at `http://localhost:5000`.
 
-### 4. Frontend Setup
+### 4. Frontend Setup, Type-checking, & Testing
 1. Navigate to the frontend directory:
    ```bash
    cd ../frontend
@@ -84,7 +90,15 @@ cd Employee_Management_System
    ```bash
    npm install
    ```
-3. Start the Vite development server:
+3. Run the frontend unit/component tests (uses Vitest, React Testing Library, and jsdom):
+   ```bash
+   npm test
+   ```
+4. Build and type-check the frontend:
+   ```bash
+   npm run build
+   ```
+5. Start the Vite development server:
    ```bash
    npm run dev
    ```

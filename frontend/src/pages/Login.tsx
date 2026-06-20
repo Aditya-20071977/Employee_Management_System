@@ -1,61 +1,49 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api/axiosConfig';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 
-const Register = () => {
+const Login: React.FC = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const location = useLocation();
 
     useEffect(() => {
+        // Check for success messages from routing state (e.g. logout success)
+        if (location.state?.successMessage) {
+            setSuccess(location.state.successMessage);
+            // clear state history so refresh doesn't show it again
+            window.history.replaceState({}, document.title);
+            setTimeout(() => setSuccess(''), 4000);
+        }
+
         // If already logged in, redirect to dashboard
         if (localStorage.getItem('token')) {
             navigate('/dashboard');
         }
-    }, [navigate]);
+    }, [navigate, location]);
 
-    const handleRegister = async (e) => {
+    const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError('');
-        setSuccess('');
 
-        if (!username.trim() || !password || !confirmPassword) {
+        if (!username.trim() || !password) {
             setError('Please fill in all fields');
-            return;
-        }
-
-        if (username.length < 3) {
-            setError('Username must be at least 3 characters long');
-            return;
-        }
-
-        // Strong password regex: 6 length, upper, lower, digit, special char
-        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]).{6,}$/;
-        if (!passwordRegex.test(password)) {
-            setError('Password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.');
-            return;
-        }
-
-        if (password !== confirmPassword) {
-            setError('Passwords do not match');
             return;
         }
 
         setLoading(true);
         try {
-            await api.post('/auth/register', { username, password });
-            setSuccess('Registration successful! Redirecting to login...');
-            setTimeout(() => {
-                navigate('/login');
-            }, 2000);
-        } catch (err) {
-            setError(err.response?.data?.message || 'Registration failed. Try a different username.');
+            const res = await api.post('/auth/login', { username, password });
+            localStorage.setItem('token', res.data.token);
+            localStorage.setItem('username', res.data.user.username);
+            navigate('/dashboard', { state: { successMessage: 'Login successful! Welcome back.' } });
+        } catch (err: any) {
+            setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
         } finally {
             setLoading(false);
         }
@@ -85,20 +73,9 @@ const Register = () => {
                             <path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"></path>
                         </svg>
                     </div>
-                    <h2 style={{ fontSize: '1.75rem', marginBottom: '8px' }}>Create Account</h2>
-                    <p style={{ fontSize: '0.9rem' }}>Get started with your Management System</p>
+                    <h2 style={{ fontSize: '1.75rem', marginBottom: '8px' }}>Welcome Back</h2>
+                    <p style={{ fontSize: '0.9rem' }}>Sign in to manage your employee workspace</p>
                 </div>
-
-                {error && (
-                    <div className="alert alert-danger">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="8" x2="12" y2="12"></line>
-                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
-                        </svg>
-                        <span style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>{error}</span>
-                    </div>
-                )}
 
                 {success && (
                     <div className="alert alert-success">
@@ -110,74 +87,51 @@ const Register = () => {
                     </div>
                 )}
 
-                <form onSubmit={handleRegister}>
+                {error && (
+                    <div className="alert alert-danger">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        <span>{error}</span>
+                    </div>
+                )}
+
+                <form onSubmit={handleLogin}>
                     <div className="form-group">
                         <label className="form-label">Username</label>
                         <input 
                             type="text" 
                             className="form-control" 
-                            placeholder="Min 3 characters" 
+                            placeholder="Enter your username" 
                             value={username}
                             onChange={(e) => setUsername(e.target.value)} 
-                            disabled={loading || success}
+                            disabled={loading}
                             required 
                         />
                     </div>
                     
-                    <div className="form-group">
+                    <div className="form-group" style={{ marginBottom: '28px' }}>
                         <label className="form-label">Password</label>
                         <div className="password-wrapper">
                             <input 
                                 type={showPassword ? "text" : "password"} 
                                 className="form-control" 
-                                placeholder="Min 6 characters" 
+                                placeholder="Enter your password" 
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)} 
-                                disabled={loading || success}
+                                disabled={loading}
                                 required 
                             />
                             <button 
                                 type="button" 
                                 className={`password-toggle-btn ${showPassword ? 'slashed' : ''}`}
                                 onClick={() => setShowPassword(!showPassword)}
-                                disabled={loading || success}
+                                disabled={loading}
                                 aria-label="Toggle password visibility"
                             >
                                 {showPassword ? (
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                                        <line x1="1" y1="1" x2="23" y2="23"></line>
-                                    </svg>
-                                ) : (
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                        <circle cx="12" cy="12" r="3"></circle>
-                                    </svg>
-                                )}
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="form-group" style={{ marginBottom: '28px' }}>
-                        <label className="form-label">Confirm Password</label>
-                        <div className="password-wrapper">
-                            <input 
-                                type={showConfirmPassword ? "text" : "password"} 
-                                className="form-control" 
-                                placeholder="Repeat password" 
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)} 
-                                disabled={loading || success}
-                                required 
-                            />
-                            <button 
-                                type="button" 
-                                className={`password-toggle-btn ${showConfirmPassword ? 'slashed' : ''}`}
-                                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                disabled={loading || success}
-                                aria-label="Toggle confirm password visibility"
-                            >
-                                {showConfirmPassword ? (
                                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
                                         <line x1="1" y1="1" x2="23" y2="23"></line>
@@ -196,16 +150,16 @@ const Register = () => {
                         type="submit" 
                         className="btn btn-primary" 
                         style={{ width: '100%', padding: '14px' }}
-                        disabled={loading || success}
+                        disabled={loading}
                     >
-                        {loading ? <div className="spinner"></div> : 'Create Account'}
+                        {loading ? <div className="spinner"></div> : 'Sign In'}
                     </button>
                 </form>
 
                 <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '0.9rem' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Already have an account? </span>
-                    <Link to="/login" style={{ color: 'var(--primary)', fontWeight: '600', textDecoration: 'none' }}>
-                        Sign in
+                    <span style={{ color: 'var(--text-secondary)' }}>Don't have an account? </span>
+                    <Link to="/register" style={{ color: 'var(--primary)', fontWeight: '600', textDecoration: 'none' }}>
+                        Register here
                     </Link>
                 </div>
             </div>
@@ -213,4 +167,4 @@ const Register = () => {
     );
 };
 
-export default Register;
+export default Login;

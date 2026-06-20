@@ -1,21 +1,50 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import api from '../api/axiosConfig';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const Dashboard = () => {
-    const [employees, setEmployees] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
+interface Employee {
+    _id: string;
+    fullName: string;
+    email: string;
+    mobile: string;
+    department: string;
+    designation: string;
+    joiningDate: string;
+}
+
+interface FormValues {
+    fullName: string;
+    email: string;
+    mobile: string;
+    department: string;
+    designation: string;
+    joiningDate: string;
+}
+
+interface FormErrors {
+    fullName?: string;
+    email?: string;
+    mobile?: string;
+    department?: string;
+    designation?: string;
+    joiningDate?: string;
+    apiError?: string;
+}
+
+const Dashboard: React.FC = () => {
+    const [employees, setEmployees] = useState<Employee[]>([]);
+    const [searchTerm, setSearchTerm] = useState<string>('');
+    const [loading, setLoading] = useState<boolean>(true);
+    const [error, setError] = useState<string>('');
+    const [success, setSuccess] = useState<string>('');
 
     // Modal state
-    const [showModal, setShowModal] = useState(false);
-    const [isEditing, setIsEditing] = useState(false);
-    const [selectedEmpId, setSelectedEmpId] = useState(null);
+    const [showModal, setShowModal] = useState<boolean>(false);
+    const [isEditing, setIsEditing] = useState<boolean>(false);
+    const [selectedEmpId, setSelectedEmpId] = useState<string | null>(null);
 
     // Form inputs state
-    const [formValues, setFormValues] = useState({
+    const [formValues, setFormValues] = useState<FormValues>({
         fullName: '',
         email: '',
         mobile: '',
@@ -23,8 +52,16 @@ const Dashboard = () => {
         designation: '',
         joiningDate: new Date().toISOString().split('T')[0]
     });
-    const [formErrors, setFormErrors] = useState({});
-    const [submitting, setSubmitting] = useState(false);
+    const [formErrors, setFormErrors] = useState<FormErrors>({});
+    const [submitting, setSubmitting] = useState<boolean>(false);
+
+    // Sorting state
+    const [sortField, setSortField] = useState<keyof Employee | null>(null);
+    const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const itemsPerPage = 5;
 
     const navigate = useNavigate();
     const location = useLocation();
@@ -35,9 +72,9 @@ const Dashboard = () => {
         setError('');
         try {
             const url = searchVal ? `/employees?search=${encodeURIComponent(searchVal)}` : '/employees';
-            const res = await api.get(url);
+            const res = await api.get<Employee[]>(url);
             setEmployees(res.data);
-        } catch (err) {
+        } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to retrieve employees list');
         } finally {
             setLoading(false);
@@ -53,8 +90,8 @@ const Dashboard = () => {
         fetchEmployees();
     }, [location]);
 
-    // Handle search input change (debounced search could be nice, but simple input works well)
-    const handleSearchChange = (e) => {
+    // Handle search input change
+    const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         setSearchTerm(val);
         fetchEmployees(val);
@@ -83,7 +120,7 @@ const Dashboard = () => {
     };
 
     // Open modal to edit existing employee
-    const openEditModal = (emp) => {
+    const openEditModal = (emp: Employee) => {
         setIsEditing(true);
         setSelectedEmpId(emp._id);
         setFormValues({
@@ -100,7 +137,7 @@ const Dashboard = () => {
 
     // Form validations
     const validateForm = () => {
-        const errors = {};
+        const errors: FormErrors = {};
         const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
         const mobileRegex = /^[0-9\-\+\s]{10,15}$/;
 
@@ -132,7 +169,7 @@ const Dashboard = () => {
     };
 
     // Submit form logic
-    const handleFormSubmit = async (e) => {
+    const handleFormSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validateForm()) return;
 
@@ -148,7 +185,7 @@ const Dashboard = () => {
             setShowModal(false);
             fetchEmployees(searchTerm);
             setTimeout(() => setSuccess(''), 3000);
-        } catch (err) {
+        } catch (err: any) {
             setFormErrors({ apiError: err.response?.data?.message || 'Action failed. Please check inputs.' });
         } finally {
             setSubmitting(false);
@@ -156,7 +193,7 @@ const Dashboard = () => {
     };
 
     // Delete employee logic
-    const handleDeleteEmployee = async (id) => {
+    const handleDeleteEmployee = async (id: string) => {
         if (!window.confirm('Are you sure you want to delete this employee?')) return;
 
         try {
@@ -164,19 +201,67 @@ const Dashboard = () => {
             setSuccess(res.data.message || 'Employee deleted successfully');
             fetchEmployees(searchTerm);
             setTimeout(() => setSuccess(''), 3000);
-        } catch (err) {
+        } catch (err: any) {
             setError(err.response?.data?.message || 'Failed to delete employee');
             setTimeout(() => setError(''), 4000);
         }
     };
 
-    // Compute stats dynamically
+    // Sorting handler
+    const handleSort = (field: keyof Employee) => {
+        if (sortField === field) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortOrder('asc');
+        }
+    };
+
+    // Compute stats dynamically from the entire array
     const totalEmployees = employees.length;
-    const departmentCounts = employees.reduce((acc, emp) => {
+    const departmentCounts = employees.reduce((acc: { [key: string]: number }, emp) => {
         const dept = emp.department ? emp.department.trim() : 'Unknown';
         acc[dept] = (acc[dept] || 0) + 1;
         return acc;
     }, {});
+
+    // Sort employees list
+    const getSortedEmployees = () => {
+        if (!sortField) return employees;
+        return [...employees].sort((a, b) => {
+            let valA = a[sortField] || '';
+            let valB = b[sortField] || '';
+
+            if (sortField === 'joiningDate') {
+                valA = new Date(valA).getTime().toString();
+                valB = new Date(valB).getTime().toString();
+            } else {
+                valA = valA.toString().toLowerCase();
+                valB = valB.toString().toLowerCase();
+            }
+
+            if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+            if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+            return 0;
+        });
+    };
+
+    const sortedEmployees = getSortedEmployees();
+
+    // Reset page to 1 if sorted list size changes (e.g. search changes)
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [employees]);
+
+    // Paginate sorted employees
+    const totalPages = Math.ceil(sortedEmployees.length / itemsPerPage) || 1;
+    const paginatedEmployees = sortedEmployees.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
+    );
+
+    const startItemIdx = sortedEmployees.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+    const endItemIdx = Math.min(currentPage * itemsPerPage, sortedEmployees.length);
 
     return (
         <div style={{ display: 'flex', height: '100vh', width: '100vw', overflow: 'hidden' }}>
@@ -476,81 +561,178 @@ const Dashboard = () => {
                         </p>
                     </div>
                 ) : (
-                    <div className="table-container no-scrollbar animate-fade-in">
-                        <table className="emp-table">
-                            <thead>
-                                <tr>
-                                    <th style={{ width: '60px' }}>S.No</th>
-                                    <th>Full Name</th>
-                                    <th>Email Address</th>
-                                    <th>Mobile Phone</th>
-                                    <th>Department</th>
-                                    <th>Designation</th>
-                                    <th>Joining Date</th>
-                                    <th style={{ textAlign: 'right' }}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {employees.map((emp, index) => (
-                                    <tr key={emp._id}>
-                                        <td style={{ fontWeight: '600', color: 'var(--text-muted)', width: '60px' }}>{index + 1}</td>
-                                        <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{emp.fullName}</td>
-                                        <td>{emp.email}</td>
-                                        <td>{emp.mobile}</td>
-                                        <td>
-                                            <span style={{
-                                                padding: '4px 10px',
-                                                borderRadius: '6px',
-                                                fontSize: '0.8rem',
-                                                fontWeight: '600',
-                                                backgroundColor: 'var(--bg-app)',
-                                                border: '1px solid var(--border-color)',
-                                                color: 'var(--text-secondary)'
-                                            }}>
-                                                {emp.department}
+                    <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, minHeight: 0 }}>
+                        <div className="table-container no-scrollbar animate-fade-in" style={{ flexGrow: 1, overflowY: 'auto' }}>
+                            <table className="emp-table">
+                                <thead>
+                                    <tr>
+                                        <th style={{ width: '60px' }}>S.No</th>
+                                        <th onClick={() => handleSort('fullName')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                Full Name
+                                                <span style={{ fontSize: '0.75rem', opacity: sortField === 'fullName' ? 1 : 0.4 }}>
+                                                    {sortField === 'fullName' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                                                </span>
                                             </span>
-                                        </td>
-                                        <td style={{ color: 'var(--text-secondary)' }}>{emp.designation}</td>
-                                        <td>
-                                            {emp.joiningDate ? new Date(emp.joiningDate).toLocaleDateString(undefined, {
-                                                year: 'numeric',
-                                                month: 'short',
-                                                day: 'numeric'
-                                            }) : 'N/A'}
-                                        </td>
-                                        <td style={{ textAlign: 'right' }}>
-                                            <div style={{ display: 'inline-flex', gap: '8px' }}>
-                                                {/* Edit Action */}
-                                                <button 
-                                                    onClick={() => openEditModal(emp)} 
-                                                    className="btn-icon" 
-                                                    title="Edit Record"
-                                                >
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                                        <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                                                    </svg>
-                                                </button>
-                                                {/* Delete Action */}
-                                                <button 
-                                                    onClick={() => handleDeleteEmployee(emp._id)} 
-                                                    className="btn-icon" 
-                                                    style={{ color: 'var(--error)' }}
-                                                    title="Delete Record"
-                                                >
-                                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                        <polyline points="3 6 5 6 21 6"></polyline>
-                                                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                                        <line x1="10" y1="11" x2="10" y2="17"></line>
-                                                        <line x1="14" y1="11" x2="14" y2="17"></line>
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        </td>
+                                        </th>
+                                        <th>Email Address</th>
+                                        <th>Mobile Phone</th>
+                                        <th onClick={() => handleSort('department')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                Department
+                                                <span style={{ fontSize: '0.75rem', opacity: sortField === 'department' ? 1 : 0.4 }}>
+                                                    {sortField === 'department' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                                                </span>
+                                            </span>
+                                        </th>
+                                        <th onClick={() => handleSort('designation')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                Designation
+                                                <span style={{ fontSize: '0.75rem', opacity: sortField === 'designation' ? 1 : 0.4 }}>
+                                                    {sortField === 'designation' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                                                </span>
+                                            </span>
+                                        </th>
+                                        <th onClick={() => handleSort('joiningDate')} style={{ cursor: 'pointer', userSelect: 'none' }}>
+                                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                Joining Date
+                                                <span style={{ fontSize: '0.75rem', opacity: sortField === 'joiningDate' ? 1 : 0.4 }}>
+                                                    {sortField === 'joiningDate' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                                                </span>
+                                            </span>
+                                        </th>
+                                        <th style={{ textAlign: 'right' }}>Actions</th>
                                     </tr>
+                                </thead>
+                                <tbody>
+                                    {paginatedEmployees.map((emp, index) => (
+                                        <tr key={emp._id}>
+                                            <td style={{ fontWeight: '600', color: 'var(--text-muted)', width: '60px' }}>
+                                                {(currentPage - 1) * itemsPerPage + index + 1}
+                                            </td>
+                                            <td style={{ fontWeight: '600', color: 'var(--text-primary)' }}>{emp.fullName}</td>
+                                            <td>{emp.email}</td>
+                                            <td>{emp.mobile}</td>
+                                            <td>
+                                                <span style={{
+                                                    padding: '4px 10px',
+                                                    borderRadius: '6px',
+                                                    fontSize: '0.8rem',
+                                                    fontWeight: '600',
+                                                    backgroundColor: 'var(--bg-app)',
+                                                    border: '1px solid var(--border-color)',
+                                                    color: 'var(--text-secondary)'
+                                                }}>
+                                                    {emp.department}
+                                                </span>
+                                            </td>
+                                            <td style={{ color: 'var(--text-secondary)' }}>{emp.designation}</td>
+                                            <td>
+                                                {emp.joiningDate ? new Date(emp.joiningDate).toLocaleDateString(undefined, {
+                                                    year: 'numeric',
+                                                    month: 'short',
+                                                    day: 'numeric'
+                                                }) : 'N/A'}
+                                            </td>
+                                            <td style={{ textAlign: 'right' }}>
+                                                <div style={{ display: 'inline-flex', gap: '8px' }}>
+                                                    {/* Edit Action */}
+                                                    <button 
+                                                        onClick={() => openEditModal(emp)} 
+                                                        className="btn-icon" 
+                                                        title="Edit Record"
+                                                    >
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                                            <path d="M18.5 2.5a2.121 2.121 0 1 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                                        </svg>
+                                                    </button>
+                                                    {/* Delete Action */}
+                                                    <button 
+                                                        onClick={() => handleDeleteEmployee(emp._id)} 
+                                                        className="btn-icon" 
+                                                        style={{ color: 'var(--error)' }}
+                                                        title="Delete Record"
+                                                    >
+                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                                                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* PAGINATION FOOTER */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '16px 4px 0 4px',
+                            marginTop: '12px',
+                            borderTop: '1px solid var(--border-color)',
+                            flexShrink: 0
+                        }}>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
+                                Showing <strong style={{ color: 'var(--text-primary)' }}>{startItemIdx}</strong> to <strong style={{ color: 'var(--text-primary)' }}>{endItemIdx}</strong> of <strong style={{ color: 'var(--text-primary)' }}>{sortedEmployees.length}</strong> employees
+                            </span>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={currentPage === 1}
+                                    className="btn btn-secondary"
+                                    style={{
+                                        padding: '8px 14px',
+                                        fontSize: '0.85rem',
+                                        height: '36px',
+                                        opacity: currentPage === 1 ? 0.5 : 1,
+                                        cursor: currentPage === 1 ? 'not-allowed' : 'pointer'
+                                    }}
+                                >
+                                    Previous
+                                </button>
+
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                                    <button
+                                        key={page}
+                                        onClick={() => setCurrentPage(page)}
+                                        className={currentPage === page ? 'btn btn-primary' : 'btn btn-secondary'}
+                                        style={{
+                                            padding: '8px 12px',
+                                            fontSize: '0.85rem',
+                                            height: '36px',
+                                            minWidth: '36px',
+                                            background: currentPage === page ? 'linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%)' : 'transparent',
+                                            border: currentPage === page ? 'none' : '1px solid var(--border-color)'
+                                        }}
+                                    >
+                                        {page}
+                                    </button>
                                 ))}
-                            </tbody>
-                        </table>
+
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                    disabled={currentPage === totalPages}
+                                    className="btn btn-secondary"
+                                    style={{
+                                        padding: '8px 14px',
+                                        fontSize: '0.85rem',
+                                        height: '36px',
+                                        opacity: currentPage === totalPages ? 0.5 : 1,
+                                        cursor: currentPage === totalPages ? 'not-allowed' : 'pointer'
+                                    }}
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 )}
             </main>
