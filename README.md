@@ -1,12 +1,14 @@
 # Corporate Employee Management System (EMS Pro)
 
-A secure, responsive, and visually stunning full-stack Employee Management System built using the MERN stack (MongoDB, Express, React, Node.js) and TypeScript. This system allows administrators to manage employee details, search records, view headcounts, and dynamically track organizational stats in a premium, scroll-locked dashboard.
+A secure, responsive, and visually stunning full-stack Employee Management System built using the MERN stack (MongoDB, Express, React, Node.js), TypeScript, and Redux Toolkit. This system allows administrators to manage employee details, search records, view headcounts, and dynamically track organizational stats in a premium, scroll-locked dashboard. The entire application is containerized using Docker and Docker Compose.
 
 ---
 
 ## Key Features
 
 - **TypeScript Migration**: Frontend fully migrated to TypeScript (`.ts` and `.tsx` file types) to guarantee complete compile-time type-safety.
+- **Redux Toolkit Integration**: Global state management configuration using `@reduxjs/toolkit` and `react-redux`. Replacing direct component Axios calls with asynchronous thunk actions to manage predictable and unified data streams.
+- **Docker Containerization**: Standardized `Dockerfile` configurations and a root `docker-compose.yml` orchestrating MongoDB, Backend API, and Frontend client services in a secure bridge network.
 - **Client-Side Sorting**: Instantly sort records in the dashboard by clicking headers for `Full Name`, `Department`, `Designation`, and `Joining Date` with live sorting indicators (`▲` / `▼`).
 - **Page-Based Pagination**: Break down list elements into paginated blocks of `5` items per page, featuring a details count label and interactive controls (Previous, Next, and specific page buttons).
 - **JWT Authentication**: Secure user registration and login with token-based session tracking (24h expiry).
@@ -23,9 +25,10 @@ A secure, responsive, and visually stunning full-stack Employee Management Syste
 
 ## Technology Stack
 
-- **Frontend**: React.js, Vite, TypeScript, React Router v6, Axios, Custom CSS (Design Tokens, Glassmorphism, Micro-animations)
+- **Frontend**: React.js, Vite, TypeScript, Redux Toolkit (RTK), React Router v6, Axios, Custom CSS (Design Tokens, Glassmorphism, Micro-animations)
 - **Backend**: Node.js, Express.js, Jest, Supertest, JWT, Bcrypt
 - **Database**: MongoDB (Mongoose Object Modeling)
+- **Deployment**: Docker, Docker Compose, Nginx
 
 ---
 
@@ -43,22 +46,44 @@ JWT_SECRET=your_super_secret_key_123
 - `MONGO_URI`: The MongoDB connection string.
 - `JWT_SECRET`: A secret key used to sign and verify JSON Web Tokens.
 
+*Note: In the Docker Compose environment, these environment parameters are automatically configured via `docker-compose.yml`.*
+
 ---
 
-## Project Setup Instructions
+## Project Setup & Running Instructions
 
-### 1. Prerequisites
-Ensure you have the following installed:
-- [Node.js](https://nodejs.org/) (v16+ recommended)
-- [MongoDB](https://www.mongodb.com/) (running locally or a MongoDB Atlas account)
+### Option A: Running via Docker (Recommended)
+Ensure you have [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
 
-### 2. Clone the Repository
+1. Clone the repository and navigate to the project root:
+   ```bash
+   git clone https://github.com/Aditya-20071977/Employee_Management_System.git
+   cd Employee_Management_System
+   ```
+2. Build and start the entire stack:
+   ```bash
+   docker-compose up --build
+   ```
+3. Open your browser and navigate to:
+   - **Frontend Client**: `http://localhost` (runs on default port 80 via Nginx)
+   - **Backend API Server**: `http://localhost:5000`
+   - **MongoDB Instance**: Available on port `27017`
+
+To shut down the containers:
 ```bash
-git clone https://github.com/Aditya-20071977/Employee_Management_System.git
-cd Employee_Management_System
+docker-compose down
 ```
 
-### 3. Backend Setup & Testing
+---
+
+### Option B: Running Locally
+
+#### 1. Prerequisites
+Ensure you have the following installed:
+- [Node.js](https://nodejs.org/) (v16+ recommended)
+- [MongoDB](https://www.mongodb.com/) (running locally)
+
+#### 2. Backend Setup & Testing
 1. Navigate to the backend directory:
    ```bash
    cd backend
@@ -81,7 +106,7 @@ cd Employee_Management_System
    ```
    The backend will start running at `http://localhost:5000`.
 
-### 4. Frontend Setup, Type-checking, & Testing
+#### 3. Frontend Setup, Type-checking, & Testing
 1. Navigate to the frontend directory:
    ```bash
    cd ../frontend
@@ -103,6 +128,18 @@ cd Employee_Management_System
    npm run dev
    ```
    The application will start running locally at `http://localhost:5173`.
+
+---
+
+## State Management Architecture
+
+Global frontend state is managed via Redux Toolkit slices in `frontend/src/store/`:
+1. **Auth Slice (`authSlice.ts`)**: Manages session state (`token`, `username`), loading flags, and error alerts. Handles asynchronous thunk actions `loginUser` and `registerUser`, caching tokens to browser localStorage.
+2. **Employee Slice (`employeeSlice.ts`)**: Handles active employee registry items. Exposes asynchronous CRUD thunks:
+   - `fetchEmployees(search)`: Loads lists from DB filtering search terms.
+   - `addEmployee(data)`: Enrolls new employee.
+   - `updateEmployee({ id, data })`: Modifies existing record.
+   - `deleteEmployee(id)`: Soft-deletes record (marks `isDeleted: true`).
 
 ---
 
@@ -154,7 +191,7 @@ All endpoints are prefixed with `/api`.
 ---
 
 ### 2. Employee Management Module
-*Note: All endpoints below require a valid JWT token passed in the `Authorization` header as `Bearer <token>`.*
+*Note: All endpoints require a valid JWT token passed in the `Authorization` header as `Bearer <token>`.*
 
 #### Add Employee
 - **Endpoint**: `POST /employees/add`

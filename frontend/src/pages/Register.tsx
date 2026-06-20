@@ -1,63 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import api from '../api/axiosConfig';
 import { useNavigate, Link } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '../store/store';
+import { registerUser, clearAuthStatus } from '../store/slices/authSlice';
 
 const Register: React.FC = () => {
+    const dispatch = useAppDispatch();
+    const navigate = useNavigate();
+
+    const { loading, error, success } = useAppSelector((state) => state.auth);
+
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
-    const [loading, setLoading] = useState(false);
-    const navigate = useNavigate();
+    const [validationError, setValidationError] = useState('');
 
     useEffect(() => {
+        dispatch(clearAuthStatus());
+
         // If already logged in, redirect to dashboard
         if (localStorage.getItem('token')) {
             navigate('/dashboard');
         }
-    }, [navigate]);
+    }, [navigate, dispatch]);
 
     const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setError('');
-        setSuccess('');
+        setValidationError('');
+        dispatch(clearAuthStatus());
 
         if (!username.trim() || !password || !confirmPassword) {
-            setError('Please fill in all fields');
+            setValidationError('Please fill in all fields');
             return;
         }
 
         if (username.length < 3) {
-            setError('Username must be at least 3 characters long');
+            setValidationError('Username must be at least 3 characters long');
             return;
         }
 
         // Strong password regex: 6 length, upper, lower, digit, special char
         const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]).{6,}$/;
         if (!passwordRegex.test(password)) {
-            setError('Password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.');
+            setValidationError('Password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character.');
             return;
         }
 
         if (password !== confirmPassword) {
-            setError('Passwords do not match');
+            setValidationError('Passwords do not match');
             return;
         }
 
-        setLoading(true);
-        try {
-            await api.post('/auth/register', { username, password });
-            setSuccess('Registration successful! Redirecting to login...');
+        const result = await dispatch(registerUser({ username, password }));
+        if (registerUser.fulfilled.match(result)) {
             setTimeout(() => {
                 navigate('/login');
             }, 2000);
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Registration failed. Try a different username.');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -89,14 +88,14 @@ const Register: React.FC = () => {
                     <p style={{ fontSize: '0.9rem' }}>Get started with your Management System</p>
                 </div>
 
-                {error && (
+                {(validationError || error) && (
                     <div className="alert alert-danger">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
                             <line x1="12" y1="8" x2="12" y2="12"></line>
                             <line x1="12" y1="16" x2="12.01" y2="16"></line>
                         </svg>
-                        <span style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>{error}</span>
+                        <span style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>{validationError || error}</span>
                     </div>
                 )}
 

@@ -1,25 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import api from '../api/axiosConfig';
 import { useNavigate, useLocation } from 'react-router-dom';
-
-interface Employee {
-    _id: string;
-    fullName: string;
-    email: string;
-    mobile: string;
-    department: string;
-    designation: string;
-    joiningDate: string;
-}
-
-interface FormValues {
-    fullName: string;
-    email: string;
-    mobile: string;
-    department: string;
-    designation: string;
-    joiningDate: string;
-}
+import { useAppDispatch, useAppSelector } from '../store/store';
+import { logout } from '../store/slices/authSlice';
+import {
+    fetchEmployees,
+    addEmployee,
+    updateEmployee,
+    deleteEmployee,
+    clearEmployeeStatus,
+    Employee,
+    FormValues
+} from '../store/slices/employeeSlice';
 
 interface FormErrors {
     fullName?: string;
@@ -32,11 +23,17 @@ interface FormErrors {
 }
 
 const Dashboard: React.FC = () => {
-    const [employees, setEmployees] = useState<Employee[]>([]);
-    const [searchTerm, setSearchTerm] = useState<string>('');
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string>('');
-    const [success, setSuccess] = useState<string>('');
+    const dispatch = useAppDispatch();
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    // Redux selectors
+    const { employees, loading, error: apiError, success: apiSuccess } = useAppSelector(state => state.employee);
+    const currentUser = useAppSelector(state => state.auth.username) || 'Administrator';
+
+    // Local notifications states
+    const [localSuccess, setLocalSuccess] = useState<string>('');
+    const [localError, setLocalError] = useState<string>('');
 
     // Modal state
     const [showModal, setShowModal] = useState<boolean>(false);
@@ -54,6 +51,7 @@ const Dashboard: React.FC = () => {
     });
     const [formErrors, setFormErrors] = useState<FormErrors>({});
     const [submitting, setSubmitting] = useState<boolean>(false);
+    const [searchTerm, setSearchTerm] = useState<string>('');
 
     // Sorting state
     const [sortField, setSortField] = useState<keyof Employee | null>(null);
@@ -63,43 +61,42 @@ const Dashboard: React.FC = () => {
     const [currentPage, setCurrentPage] = useState<number>(1);
     const itemsPerPage = 5;
 
-    const navigate = useNavigate();
-    const location = useLocation();
-    const currentUser = localStorage.getItem('username') || 'Administrator';
-
-    const fetchEmployees = async (searchVal = '') => {
-        setLoading(true);
-        setError('');
-        try {
-            const url = searchVal ? `/employees?search=${encodeURIComponent(searchVal)}` : '/employees';
-            const res = await api.get<Employee[]>(url);
-            setEmployees(res.data);
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to retrieve employees list');
-        } finally {
-            setLoading(false);
-        }
-    };
-
+    // Fetch initial list on mount
     useEffect(() => {
         if (location.state?.successMessage) {
-            setSuccess(location.state.successMessage);
+            setLocalSuccess(location.state.successMessage);
             window.history.replaceState({}, document.title);
-            setTimeout(() => setSuccess(''), 4000);
+            setTimeout(() => setLocalSuccess(''), 4000);
         }
-        fetchEmployees();
-    }, [location]);
+        dispatch(fetchEmployees());
+    }, [location, dispatch]);
+
+    // Handle global slice alerts
+    useEffect(() => {
+        if (apiSuccess) {
+            setLocalSuccess(apiSuccess);
+            dispatch(clearEmployeeStatus());
+            setTimeout(() => setLocalSuccess(''), 3000);
+        }
+    }, [apiSuccess, dispatch]);
+
+    useEffect(() => {
+        if (apiError) {
+            setLocalError(apiError);
+            dispatch(clearEmployeeStatus());
+            setTimeout(() => setLocalError(''), 4000);
+        }
+    }, [apiError, dispatch]);
 
     // Handle search input change
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value;
         setSearchTerm(val);
-        fetchEmployees(val);
+        dispatch(fetchEmployees(val));
     };
 
     const handleLogout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('username');
+        dispatch(logout());
         navigate('/login', { state: { successMessage: 'You have been logged out successfully.' } });
     };
 
@@ -174,19 +171,27 @@ const Dashboard: React.FC = () => {
         if (!validateForm()) return;
 
         setSubmitting(true);
+        setFormErrors({});
         try {
             if (isEditing) {
-                const res = await api.put(`/employees/${selectedEmpId}`, formValues);
-                setSuccess(res.data.message || 'Employee updated successfully');
+                if (selectedEmpId) {
+                    const result = await dispatch(updateEmployee({ id: selectedEmpId, employeeData: formValues }));
+                    if (updateEmployee.fulfilled.match(result)) {
+                        setShowModal(false);
+                        dispatch(fetchEmployees(searchTerm));
+                    } else if (updateEmployee.rejected.match(result)) {
+                        setFormErrors({ apiError: (result.payload as string) || 'Update failed.' });
+                    }
+                }
             } else {
-                const res = await api.post('/employees/add', formValues);
-                setSuccess(res.data.message || 'Employee added successfully');
+                const result = await dispatch(addEmployee(formValues));
+                if (addEmployee.fulfilled.match(result)) {
+                    setShowModal(false);
+                    dispatch(fetchEmployees(searchTerm));
+                } else if (addEmployee.rejected.match(result)) {
+                    setFormErrors({ apiError: (result.payload as string) || 'Enrollment failed.' });
+                }
             }
-            setShowModal(false);
-            fetchEmployees(searchTerm);
-            setTimeout(() => setSuccess(''), 3000);
-        } catch (err: any) {
-            setFormErrors({ apiError: err.response?.data?.message || 'Action failed. Please check inputs.' });
         } finally {
             setSubmitting(false);
         }
@@ -195,15 +200,9 @@ const Dashboard: React.FC = () => {
     // Delete employee logic
     const handleDeleteEmployee = async (id: string) => {
         if (!window.confirm('Are you sure you want to delete this employee?')) return;
-
-        try {
-            const res = await api.delete(`/employees/${id}`);
-            setSuccess(res.data.message || 'Employee deleted successfully');
-            fetchEmployees(searchTerm);
-            setTimeout(() => setSuccess(''), 3000);
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Failed to delete employee');
-            setTimeout(() => setError(''), 4000);
+        const result = await dispatch(deleteEmployee(id));
+        if (deleteEmployee.fulfilled.match(result)) {
+            dispatch(fetchEmployees(searchTerm));
         }
     };
 
@@ -514,24 +513,24 @@ const Dashboard: React.FC = () => {
                 </div>
 
                 {/* Notifications Banners */}
-                {success && (
+                {localSuccess && (
                     <div className="alert alert-success">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
                             <polyline points="22 4 12 14.01 9 11.01"></polyline>
                         </svg>
-                        <span>{success}</span>
+                        <span>{localSuccess}</span>
                     </div>
                 )}
 
-                {error && (
+                {localError && (
                     <div className="alert alert-danger">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
                             <line x1="12" y1="8" x2="12" y2="12"></line>
                             <line x1="12" y1="16" x2="12.01" y2="16"></line>
                         </svg>
-                        <span>{error}</span>
+                        <span>{localError}</span>
                     </div>
                 )}
 

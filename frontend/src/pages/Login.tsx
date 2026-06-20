@@ -1,51 +1,52 @@
 import React, { useState, useEffect } from 'react';
-import api from '../api/axiosConfig';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '../store/store';
+import { loginUser, clearAuthStatus, setLogoutSuccess } from '../store/slices/authSlice';
 
 const Login: React.FC = () => {
+    const dispatch = useAppDispatch();
+    const navigate = useNavigate();
+    const location = useLocation();
+
+    const { loading, error, success } = useAppSelector((state) => state.auth);
+
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
-    const [loading, setLoading] = useState(false);
-    const navigate = useNavigate();
-    const location = useLocation();
+    const [validationError, setValidationError] = useState('');
 
     useEffect(() => {
         // Check for success messages from routing state (e.g. logout success)
         if (location.state?.successMessage) {
-            setSuccess(location.state.successMessage);
+            dispatch(setLogoutSuccess(location.state.successMessage));
             // clear state history so refresh doesn't show it again
             window.history.replaceState({}, document.title);
-            setTimeout(() => setSuccess(''), 4000);
+            setTimeout(() => {
+                dispatch(clearAuthStatus());
+            }, 4000);
+        } else {
+            dispatch(clearAuthStatus());
         }
 
         // If already logged in, redirect to dashboard
         if (localStorage.getItem('token')) {
             navigate('/dashboard');
         }
-    }, [navigate, location]);
+    }, [navigate, location, dispatch]);
 
     const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        setError('');
+        setValidationError('');
+        dispatch(clearAuthStatus());
 
         if (!username.trim() || !password) {
-            setError('Please fill in all fields');
+            setValidationError('Please fill in all fields');
             return;
         }
 
-        setLoading(true);
-        try {
-            const res = await api.post('/auth/login', { username, password });
-            localStorage.setItem('token', res.data.token);
-            localStorage.setItem('username', res.data.user.username);
+        const result = await dispatch(loginUser({ username, password }));
+        if (loginUser.fulfilled.match(result)) {
             navigate('/dashboard', { state: { successMessage: 'Login successful! Welcome back.' } });
-        } catch (err: any) {
-            setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -87,14 +88,14 @@ const Login: React.FC = () => {
                     </div>
                 )}
 
-                {error && (
+                {(validationError || error) && (
                     <div className="alert alert-danger">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
                             <line x1="12" y1="8" x2="12" y2="12"></line>
                             <line x1="12" y1="16" x2="12.01" y2="16"></line>
                         </svg>
-                        <span>{error}</span>
+                        <span>{validationError || error}</span>
                     </div>
                 )}
 
